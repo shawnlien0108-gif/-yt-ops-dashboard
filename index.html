@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>頻道控制室 · YT 營運儀表板</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">● REC</span>
+      <h1>頻道控制室</h1>
+    </div>
+    <nav class="nav">
+      <button class="nav-btn active" data-view="todo">代辦事項</button>
+      <button class="nav-btn" data-view="calendar">行事曆</button>
+      <button class="nav-btn" data-view="gantt">時程總覽</button>
+    </nav>
+    <div class="today-widget" id="today-widget"></div>
+    <div class="sidebar-footer">
+      <button id="btn-settings" class="btn-ghost">⚙ 連線設定</button>
+      <div id="sync-status" class="sync-status">尚未連線</div>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <h2 id="view-title">代辦事項</h2>
+      <div class="topbar-actions">
+        <div class="legend" id="legend"></div>
+        <button id="btn-add-task" class="btn-primary">+ 新增任務</button>
+      </div>
+    </header>
+    <section id="view-todo" class="view"></section>
+    <section id="view-calendar" class="view hidden"></section>
+    <section id="view-gantt" class="view hidden"></section>
+  </main>
+</div>
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+<script src="app.js"></script>
+</body>
+</html>
