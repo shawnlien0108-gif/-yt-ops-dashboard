@@ -15,7 +15,7 @@ const VIEW_TITLES = { todo: '代辦事項', cards: '專案卡片', calendar: '�
 const DAY_WIDTH = 26;
 const ROW_HEIGHT = 32;
 
-let settings = null;           // {owner, repo, branch, path, token, anthropicKey}
+let settings = null;           // {owner, repo, branch, path, token, geminiKey}
 let store = { categories: {}, tasks: [] };
 let fileSha = null;
 let currentView = 'todo';
@@ -75,13 +75,13 @@ function openSettingsModal(forced){
     <div class="modal-overlay">
       <div class="modal">
         <h3>連線到你的 GitHub 資料庫</h3>
-        <p class="modal-hint">這些資訊只存在這台裝置的瀏覽器裡,不會上傳到任何地方(除了你自己的 GitHub / Anthropic 帳號)。</p>
+        <p class="modal-hint">這些資訊只存在這台裝置的瀏覽器裡,不會上傳到任何地方(除了你自己的 GitHub / Google 帳號)。</p>
         <label>GitHub 帳號 (owner)<input id="set-owner" value="${escapeHtml(s.owner||'')}" placeholder="例如 yourname"></label>
         <label>私密資料 repo 名稱<input id="set-repo" value="${escapeHtml(s.repo||'')}" placeholder="例如 yt-ops-data"></label>
         <label>分支 (branch)<input id="set-branch" value="${escapeHtml(s.branch||'main')}"></label>
         <label>資料檔案路徑<input id="set-path" value="${escapeHtml(s.path||'schedule.json')}"></label>
         <label>GitHub Personal Access Token<input id="set-token" type="password" value="${escapeHtml(s.token||'')}" placeholder="github_pat_..."></label>
-        <label>Anthropic API Key(選填,用於「AI 日誌」功能)<input id="set-anthropic" type="password" value="${escapeHtml(s.anthropicKey||'')}" placeholder="sk-ant-..."></label>
+        <label>Google AI Studio API Key(選填,用於「AI 日誌」功能)<input id="set-gemini" type="password" value="${escapeHtml(s.geminiKey||'')}" placeholder="AIza..."></label>
         <div class="modal-actions">
           ${forced ? '' : '<button id="modal-cancel" class="btn-ghost">取消</button>'}
           <button id="modal-save" class="btn-primary">儲存並連線</button>
@@ -97,7 +97,7 @@ function openSettingsModal(forced){
       branch: val('set-branch') || 'main',
       path: val('set-path') || 'schedule.json',
       token: val('set-token'),
-      anthropicKey: val('set-anthropic')
+      geminiKey: val('set-gemini')
     };
     saveSettings(settings);
     closeModal();
@@ -722,14 +722,14 @@ function reportAsPlainText(dateLabel, activeToday, overdue, upcoming){
 
 function renderAiLogView(){
   const el = document.getElementById('view-ailog');
-  const hasKey = !!(settings && settings.anthropicKey);
+  const hasKey = !!(settings && settings.geminiKey);
   el.innerHTML = `
     <div class="ailog-wrap">
       <p class="ailog-hint">
         把今天完成了什麼、進度到哪、下一步要做什麼直接打字丟給它，它會讀取你目前的任務清單，
         整理出「要更新哪些任務、要新增哪些任務」，給你確認過一遍之後，才會真的存回 GitHub。
       </p>
-      ${hasKey ? '' : `<p class="ailog-warn">⚠️ 還沒設定 Anthropic API Key，去左下角「⚙ 連線設定」裡加一個（跟 GitHub Token 一樣，只存在你的瀏覽器，去 console.anthropic.com 建立）。</p>`}
+      ${hasKey ? '' : `<p class="ailog-warn">⚠️ 還沒設定 Google AI Studio API Key，去左下角「⚙ 連線設定」裡加一個（跟 GitHub Token 一樣，只存在你的瀏覽器，去 aistudio.google.com/apikey 建立）。</p>`}
       <textarea id="ailog-input" class="ailog-textarea" placeholder="例如：今天樂金文化那邊回信說願意掛名了，稀土書摘的內容也生出來了；線上課程課綱會議延到明天，拍攝週應該不受影響。"></textarea>
       <div class="ailog-actions">
         <button id="btn-ailog-submit" class="btn-primary" ${hasKey?'':'disabled'}>分析並產生建議</button>
@@ -768,20 +768,17 @@ async function submitAiLog(){
 }
 如果沒有需要更新或新增的，對應陣列給空陣列即可。日期請用今天(${todayStr()})推算。`;
 
+  const GEMINI_MODEL = 'gemini-flash-latest'; // 官方「latest」別名，會自動指向目前的穩定 Flash 模型
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(settings.geminiKey)}`;
+
   try{
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch(url, {
       method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': settings.anthropicKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-5',
-        max_tokens: 1500,
-        system: systemPrompt,
-        messages: [{ role:'user', content: input }]
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ parts: [{ text: input }] }],
+        generationConfig: { responseMimeType: 'application/json' }
       })
     });
     if(!res.ok){
@@ -789,7 +786,8 @@ async function submitAiLog(){
       throw new Error(`API ${res.status} ${errBody.slice(0,200)}`);
     }
     const data = await res.json();
-    const raw = (data.content||[]).map(b=>b.text||'').join('').trim();
+    const raw = data.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('').trim() || '';
+    if(!raw) throw new Error('模型沒有回傳內容，可能被安全過濾擋下，換個說法再試一次。');
     const cleaned = raw.replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/```\s*$/,'').trim();
     const parsed = JSON.parse(cleaned);
     renderAiLogPreview(parsed);
