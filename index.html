@@ -18,8 +18,11 @@
     </div>
     <nav class="nav">
       <button class="nav-btn active" data-view="todo">代辦事項</button>
+      <button class="nav-btn" data-view="cards">專案卡片</button>
       <button class="nav-btn" data-view="calendar">行事曆</button>
       <button class="nav-btn" data-view="gantt">時程總覽</button>
+      <button class="nav-btn" data-view="report">今日日報</button>
+      <button class="nav-btn" data-view="ailog">AI 日誌</button>
     </nav>
     <div class="today-widget" id="today-widget"></div>
     <div class="sidebar-footer">
@@ -36,8 +39,11 @@
       </div>
     </header>
     <section id="view-todo" class="view"></section>
+    <section id="view-cards" class="view hidden"></section>
     <section id="view-calendar" class="view hidden"></section>
     <section id="view-gantt" class="view hidden"></section>
+    <section id="view-report" class="view hidden"></section>
+    <section id="view-ailog" class="view hidden"></section>
   </main>
 </div>
 <div id="modal-root"></div>
