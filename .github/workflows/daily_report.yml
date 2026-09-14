@@ -1,0 +1,22 @@
+name: Daily YT Ops Report
+
+on:
+  schedule:
+    - cron: '0 0 * * *'    # 00:00 UTC = 08:00 Asia/Taipei
+  workflow_dispatch: {}    # 讓你可以手動按「Run workflow」先測試，不用等到隔天早上
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Send daily report email
+        env:
+          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+          EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
+        run: python scripts/send_daily_report.py
